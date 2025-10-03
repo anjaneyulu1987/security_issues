@@ -1,0 +1,17 @@
+search_api_revisions.settings:
+  type: config_object
+  label: 'Search API Revisions settings'
+  mapping:
+    index_previous_revisions:
+      type: boolean
+      label: 'Index previous revisions'
+    queue:
+      type: mapping
+      label: 'Queue settings'
+      mapping:
+        items_update_queue:
+          type: boolean
+          label: 'Update items in queue'
+
+"plugin.plugin_configuration.search_api_datasource.entity_revision:*":
+  type: "plugin.plugin_configuration.search_api_datasource.entity:*"

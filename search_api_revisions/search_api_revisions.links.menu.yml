@@ -1,0 +1,5 @@
+search_api_revisions.search_api_revisions_settings_form:
+  route_name: search_api_revisions.settings
+  title: 'Search api revisions'
+  description: 'Search api revisions settings.'
+  parent: system.admin_config_search
