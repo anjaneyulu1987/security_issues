@@ -25,11 +25,12 @@ function authenticateUser($email, $password) {
     global $conn;
 
     // VULNERABLE: Direct string concatenation without parameterized queries
-    $query = "SELECT * FROM users WHERE email = '" . $email . "' AND password = '" . $password . "'";
+$stmt = $conn->prepare("SELECT * FROM users WHERE email = ? AND password = ?");
+$stmt->bind_param("ss", $email, $password);
+$stmt->execute();
+$result = $stmt->get_result();
 
-    $result = $conn->query($query);
-
-    if ($result && $result->num_rows > 0) {
+if ($result && $result->nu...
         return $result->fetch_assoc();
     }
 
