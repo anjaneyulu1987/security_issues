@@ -42,11 +42,10 @@ function searchUsers($searchTerm) {
     global $conn;
 
     // VULNERABLE: No input validation or sanitization
-    $sql = "SELECT id, name, email FROM users WHERE name LIKE '%" . $searchTerm . "%' OR email LIKE '%" . $searchTerm . "%'";
-
-    $result = $conn->query($sql);
-    $users = array();
-
+$sql = "SELECT id, name, email FROM users WHERE name LIKE ? OR email LIKE ?";
+$stmt = $conn->prepare($sql);
+$searchParam = "%" . $searchTerm . "%";
+$stmt->bind_param("ss", $searchParam, $searchParam);...
     if ($result && $result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
             $users[] = $row;
