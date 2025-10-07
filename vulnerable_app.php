@@ -83,11 +83,12 @@ function getAdminStats($dateFilter) {
     $statsQuery = "SELECT COUNT(*) as total_users,
                           AVG(login_count) as avg_logins
                    FROM users
-                   WHERE created_date > '" . $dateFilter . "'";
+$stmt = $conn->prepare("WHERE created_date > ?");
+$stmt->bind_param("s", $dateFilter);
+$result = $stmt->execute();
+$result = $stmt->get_result();
 
-    $result = $conn->query($statsQuery);
-
-    if ($result) {
+if ($result) {
         return $result->fetch_assoc();
     }
 
