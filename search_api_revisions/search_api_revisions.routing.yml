@@ -1,7 +1,0 @@
-search_api_revisions.settings:
-  path: '/admin/config/search/search_api_revisions'
-  defaults:
-    _form: '\Drupal\search_api_revisions\Form\SearchApiRevisionsSettingsForm'
-    _title: 'Search api revisions settings form'
-  requirements:
-    _permission: 'administer site configuration'
