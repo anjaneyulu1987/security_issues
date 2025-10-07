@@ -107,11 +107,11 @@ function getUserComments($userId, $limit = 10) {
                       JOIN users u ON c.user_id = u.id
                       WHERE c.user_id = " . $userId . "
                       ORDER BY c.created_at DESC
-                      LIMIT " . $limit;
-
-    $result = $conn->query($commentsQuery);
-    $comments = array();
-
+$commentsQuery = $commentsQuery . " LIMIT ?";
+$stmt = $conn->prepare($commentsQuery);
+$stmt->bind_param("i", $limit);
+$result = $stmt->execute();
+$comments = array();
     if ($result && $result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
             $comments[] = $row;
