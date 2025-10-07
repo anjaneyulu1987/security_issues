@@ -64,11 +64,11 @@ function updateUserProfile($userId, $name, $email, $bio) {
                     name = '" . $name . "',
                     email = '" . $email . "',
                     bio = '" . $bio . "'
-                    WHERE id = " . $userId;
-
-    if ($conn->query($updateQuery) === TRUE) {
-        return true;
-    } else {
+$stmt = $conn->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
+$stmt->bind_param("i", $userId);
+if ($stmt->execute()) {
+    return true;
+} else {
         return false;
     }
 }
