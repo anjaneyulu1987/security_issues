@@ -5,7 +5,7 @@ error_reporting(E_ALL);
 
 $host = "localhost";
 $username = "root";
-$password = "admin123";
+$password = "admin123";  // Critical: Hard-coded credentials
 $database = "testdb";
 
 $conn = new mysqli($host, $username, $password, $database);
@@ -14,213 +14,163 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
+// These are the functions that will create EXACTLY the vulnerabilities we want:
+
 // CRITICAL VULNERABILITIES (2 total)
-// These typically require very specific patterns that Snyk classifies as critical
+// Based on what Snyk typically classifies as critical - use highest impact patterns
 
-// CRITICAL 1: Deserialization of untrusted data (typically critical)
-function loadUserSession($serializedData) {
-    $sessionData = unserialize($serializedData);  // Critical: Object injection
-    $_SESSION = array_merge($_SESSION, $sessionData);
-    return $sessionData;
+// CRITICAL 1: Multiple severe vulnerabilities in one function
+function executeSystemCommand($command, $params = []) {
+    // Critical: Multiple severe issues combined
+    $fullCommand = $command . ' ' . implode(' ', $params);
+
+    // This creates multiple critical-level issues
+    eval('$result = shell_exec("' . $fullCommand . '");');  // Critical: eval + command injection
+    return $result;
 }
 
-// CRITICAL 2: Log4j-style injection vulnerability (critical pattern)
-function logUserActivity($username, $activity) {
-    $logEntry = date('Y-m-d H:i:s') . " [" . $username . "] " . $activity;
-
-    // Critical: JNDI injection pattern (like Log4j)
-    if (strpos($activity, '${jndi:') !== false) {
-        file_put_contents('exploit.log', 'JNDI INJECTION ATTEMPT: ' . $logEntry . "\n", FILE_APPEND);
-        eval('$result = ' . str_replace('${jndi:', '', $activity) . ';');  // Critical
+// CRITICAL 2: Dangerous deserialization with code execution
+function processUserData($serializedData) {
+    // Critical: Unsafe deserialization leading to code execution
+    $data = unserialize($serializedData);
+    if (isset($data['code'])) {
+        eval($data['code']);  // Critical: Direct code execution from deserialized data
     }
-
-    file_put_contents('app.log', $logEntry . "\n", FILE_APPEND);
+    return $data;
 }
 
-// HIGH VULNERABILITIES (4 total)
+// HIGH VULNERABILITIES (4 total - exactly what we need)
 
 // HIGH 1: SQL Injection
-function adminAuthentication($username, $password) {
+function authenticateUser($username, $password) {
     global $conn;
-    $query = "SELECT * FROM admin_users WHERE username = '$username' AND password = '$password'";
+    $query = "SELECT * FROM users WHERE username = '$username' AND password = '$password'";
     $result = $conn->query($query);  // High: SQL injection
-
-    if ($result && $result->num_rows > 0) {
-        $_SESSION['admin_logged_in'] = true;
-        $_SESSION['admin_user'] = $username;
-        return true;
-    }
-    return false;
+    return $result && $result->num_rows > 0;
 }
 
 // HIGH 2: Command Injection
-function networkDiagnostics($hostname) {
+function pingHost($hostname) {
     $command = "ping -c 3 " . $hostname;
-    $output = shell_exec($command);  // High: Command injection
-    return $output;
+    return shell_exec($command);  // High: Command injection
 }
 
-// HIGH 3: Code Injection via eval
-function executeUserCode($input) {
-    $result = eval($input);  // High: Direct code execution
-    return "Code executed: " . $result;
-}
-
-// HIGH 4: XXE Vulnerability
-function parseUserXMLData($xmlString) {
+// HIGH 3: XXE Vulnerability
+function parseXMLData($xmlString) {
     $dom = new DOMDocument();
-    $dom->loadXML($xmlString, LIBXML_NOENT | LIBXML_DTDLOAD);  // High: XXE vulnerability
+    $dom->loadXML($xmlString, LIBXML_NOENT | LIBXML_DTDLOAD);  // High: XXE
     return $dom->textContent;
+}
+
+// HIGH 4: Path Traversal (File Read)
+function readConfigFile($filename) {
+    $configPath = "/etc/config/" . $filename;  // High: Path traversal
+    if (file_exists($configPath)) {
+        return file_get_contents($configPath);
+    }
+    return null;
 }
 
 // MEDIUM VULNERABILITIES (1 total)
 
-// MEDIUM 1: Path Traversal (medium severity)
-function readUserFile($filename) {
-    $basePath = "user_files/";
-    $fullPath = $basePath . $filename;  // Medium: Path traversal vulnerability
-
-    if (file_exists($fullPath)) {
-        return file_get_contents($fullPath);
+// MEDIUM 1: Information Disclosure via Error Messages
+function connectToDatabase($host, $user, $pass) {
+    $connection = @mysqli_connect($host, $user, $pass);
+    if (!$connection) {
+        // Medium: Information disclosure in error messages
+        throw new Exception("Database connection failed: " . mysqli_connect_error() . " (Host: $host, User: $user)");
     }
-    return "File not found: " . $fullPath;
+    return $connection;
 }
 
 // LOW VULNERABILITIES (6 total)
 
-// LOW 1: Weak MD5 hashing
-function hashUserPassword($password, $salt = 'defaultsalt') {
-    $weakHash = md5($password . $salt);  // Low: Weak hash algorithm
-    return $weakHash;
+// LOW 1: Weak MD5 Hash
+function hashPassword($password) {
+    return md5($password . 'salt');  // Low: Weak hash algorithm
 }
 
 // LOW 2: Another MD5 usage
-function generateUserToken($userId) {
+function generateToken($userId) {
     return md5($userId . time());  // Low: Weak hash algorithm
 }
 
-// LOW 3: SHA1 usage (also considered weak)
-function createSessionHash($sessionData) {
-    return sha1($sessionData . 'secret');  // Low: Weak hash algorithm
+// LOW 3: SHA1 usage
+function createChecksum($data) {
+    return sha1($data);  // Low: Weak hash algorithm
 }
 
-// LOW 4: Weak random generation
-function generateInsecureToken() {
-    $randomPart = rand(1000, 9999);  // Low: Weak random number generation
-    return $randomPart;
-}
-
-// LOW 5: Information disclosure in headers
-function setVulnerableHeaders() {
-    header('Server: Apache/2.4.1 (Vulnerable-Server)');  // Low: Information disclosure
-    header('X-Powered-By: PHP/' . phpversion());
-}
-
-// LOW 6: Another weak hash
+// LOW 4: Another MD5 usage
 function hashApiKey($key) {
-    return md5($key . 'static_salt');  // Low: Weak hash algorithm
+    return md5($key . 'static');  // Low: Weak hash algorithm
 }
 
-// Safe utility functions (no vulnerabilities detected)
-function getUserProfile($userId) {
+// LOW 5: Another SHA1 usage
+function signData($payload) {
+    return sha1($payload . 'secret');  // Low: Weak hash algorithm
+}
+
+// LOW 6: Weak random generation
+function generateSessionId() {
+    return md5(rand() . time());  // Low: Weak hash + weak random
+}
+
+// Safe functions (these should not generate vulnerabilities)
+function safeGetUser($userId) {
     global $conn;
-    $stmt = $conn->prepare("SELECT * FROM user_profiles WHERE user_id = ? AND status = 'active'");
+    $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
     $stmt->bind_param("i", $userId);
     $stmt->execute();
-    $result = $stmt->get_result();
-
-    $profiles = [];
-    while ($row = $result->fetch_assoc()) {
-        $profiles[] = $row;
-    }
-    return $profiles;
+    return $stmt->get_result()->fetch_assoc();
 }
 
-function fetchRemoteContent($url) {
-    // Validate URL format
-    if (!filter_var($url, FILTER_VALIDATE_URL)) {
-        return "Invalid URL format";
-    }
-
-    $context = stream_context_create([
-        'http' => [
-            'timeout' => 10,
-            'method' => 'GET',
-            'header' => "User-Agent: SafeApp/1.0\r\n"
-        ]
-    ]);
-
-    return file_get_contents($url, false, $context);
+function sanitizeInput($input) {
+    return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
 }
 
-function displayUserContent($userInput, $contentType = 'comment') {
-    // Safe version with proper escaping
-    echo "<div class='user-content'>";
-    echo "<h3>User " . htmlspecialchars(ucfirst($contentType)) . ":</h3>";
-    echo "<p>" . htmlspecialchars($userInput) . "</p>";  // Properly escaped
-    echo "</div>";
-}
-
-// Initialize headers
-setVulnerableHeaders();
-
-// Handle POST requests
+// Request handlers - these trigger the vulnerabilities
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    if (isset($_POST['execute_code'])) {
-        echo executeUserCode($_POST['execute_code']);
+    if (isset($_POST['login_user']) && isset($_POST['login_pass'])) {
+        $result = authenticateUser($_POST['login_user'], $_POST['login_pass']);
+        echo $result ? "Login successful" : "Login failed";
     }
 
-    if (isset($_POST['admin_username']) && isset($_POST['admin_password'])) {
-        $loginResult = adminAuthentication($_POST['admin_username'], $_POST['admin_password']);
-        echo $loginResult ? "Admin access granted!" : "Login failed";
+    if (isset($_POST['ping_target'])) {
+        echo "<pre>" . pingHost($_POST['ping_target']) . "</pre>";
     }
 
-    if (isset($_POST['target_host'])) {
-        echo "<pre>" . networkDiagnostics($_POST['target_host']) . "</pre>";
+    if (isset($_POST['xml_content'])) {
+        echo "XML parsed: " . parseXMLData($_POST['xml_content']);
     }
 
-    if (isset($_POST['user_comment'])) {
-        displayUserContent($_POST['user_comment'], 'comment');
+    if (isset($_POST['user_data'])) {
+        $result = processUserData($_POST['user_data']);
+        echo "Data processed: " . json_encode($result);
     }
 
-    if (isset($_POST['xml_data'])) {
-        echo "Parsed XML: " . parseUserXMLData($_POST['xml_data']);
-    }
-
-    if (isset($_POST['session_data'])) {
-        $result = loadUserSession($_POST['session_data']);
-        echo "Session loaded: " . json_encode($result);
+    if (isset($_POST['system_cmd'])) {
+        echo executeSystemCommand($_POST['system_cmd'], $_POST['cmd_params'] ?? []);
     }
 }
 
-// Handle GET requests
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     if (isset($_GET['user_id'])) {
-        $profile = getUserProfile($_GET['user_id']);
-        echo "<pre>" . print_r($profile, true) . "</pre>";
+        $user = safeGetUser($_GET['user_id']);
+        echo json_encode($user);
     }
 
-    if (isset($_GET['read_file'])) {
-        echo "<pre>" . htmlspecialchars(readUserFile($_GET['read_file'])) . "</pre>";
+    if (isset($_GET['config_file'])) {
+        echo "<pre>" . readConfigFile($_GET['config_file']) . "</pre>";
     }
 
-    if (isset($_GET['fetch_url'])) {
-        echo "<pre>" . htmlspecialchars(fetchRemoteContent($_GET['fetch_url'])) . "</pre>";
+    if (isset($_GET['hash_pass'])) {
+        echo "Hashed: " . hashPassword($_GET['hash_pass']);
     }
 
-    if (isset($_GET['generate_token'])) {
-        echo "Generated token: " . generateInsecureToken();
-    }
-
-    if (isset($_GET['hash_password'])) {
-        echo "Hashed: " . hashUserPassword($_GET['hash_password']);
-    }
-
-    if (isset($_GET['log_activity'])) {
-        logUserActivity($_GET['username'] ?? 'anonymous', $_GET['log_activity']);
-        echo "Activity logged";
+    if (isset($_GET['gen_token'])) {
+        echo "Token: " . generateToken($_GET['gen_token']);
     }
 }
 
