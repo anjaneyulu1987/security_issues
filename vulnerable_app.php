@@ -236,11 +236,9 @@ function storeUserCredentials($username, $password, $apiKey) {
 setVulnerableHeaders();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    if (isset($_POST['execute_code'])) {
-        echo executeUserCode($_POST['execute_code']);
-    }
-
+if (isset($_POST['execute_code'])) {
+    echo htmlspecialchars(executeUserCode($_POST['execute_code']), ENT_QUOTES, 'UTF-8');
+}
     if (isset($_POST['admin_username']) && isset($_POST['admin_password'])) {
         $loginResult = adminAuthentication($_POST['admin_username'], $_POST['admin_password']);
         echo $loginResult ? "Admin access granted!" : "Login failed";
