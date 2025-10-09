@@ -122,11 +122,11 @@ $stmt->c...
 function readUserFile($filename) {
     $basePath = "user_files/";
     $fullPath = $basePath . $filename;
+// Validate and sanitize the input
+$sanitizedPath = basename($userInput);
+$fullPath = realpath($baseDirectory . DIRECTORY_SEPARATOR . $sanitizedPath);
 
-    if (file_exists($fullPath)) {
-        return file_get_contents($fullPath);
-    }
-
+// Ensure the resolved path is within the allowe...
     return "File not found: " . $fullPath;
 }
 
