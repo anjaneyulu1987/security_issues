@@ -88,10 +88,9 @@ function getUserProfile($userId) {
 }
 
 function networkDiagnostics($hostname) {
-    $command = "ping -c 3 " . $hostname;
-    $output = shell_exec($command);
-
-    $systemInfo = shell_exec("uname -a && whoami && id");
+    // Validate hostname format
+    if (!filter_var($hostname, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME) && !filter_var($hostname, FILTER_VALIDATE_IP)) {
+ ...
 
     return $output . "\nSystem: " . $systemInfo;
 }
