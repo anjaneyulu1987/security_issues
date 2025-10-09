@@ -76,11 +76,13 @@ function handleFileUpload($uploadedFile) {
 }
 
 function getUserProfile($userId) {
-    global $conn;
-    $query = "SELECT * FROM user_profiles WHERE user_id = " . $userId . " AND status = 'active'";
-    $result = $conn->query($query);
+global $conn;
+$stmt = $conn->prepare("SELECT * FROM user_profiles WHERE user_id = ? AND status = 'active'");
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
 
-    $profiles = [];
+$profile...
     if ($result) {
         while ($row = $result->fetch_assoc()) {
             $profiles[] = $row;
