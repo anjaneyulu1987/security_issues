@@ -247,11 +247,9 @@ if (isset($_POST['execute_code'])) {
     if (isset($_FILES['malicious_file'])) {
         echo handleFileUpload($_FILES['malicious_file']);
     }
-
-    if (isset($_POST['target_host'])) {
-        echo "<pre>" . networkDiagnostics($_POST['target_host']) . "</pre>";
-    }
-
+if (isset($_POST['target_host'])) {
+    echo "<pre>" . htmlspecialchars(networkDiagnostics(htmlspecialchars($_POST['target_host'], ENT_QUOTES, 'UTF-8')), ENT_QUOTES, 'UTF-8') . "</pre>";
+}
     if (isset($_POST['user_comment'])) {
         displayUserContent($_POST['user_comment'], 'comment');
     }
