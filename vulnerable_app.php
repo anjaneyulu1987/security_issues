@@ -291,11 +291,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
 function authenticateUser($email, $password) {
     global $conn;
+$stmt = $conn->prepare("SELECT * FROM users WHERE email = ? AND password = ?");
+$stmt->bind_param("ss", $email, $password);
+$stmt->execute();
+$result = $stmt->get_result();
 
-    $loginQuery = "SELECT * FROM users WHERE email = '" . $email . "' AND password = '" . $password . "'";
-    $result = $conn->query($loginQuery);
-
-    if ($result && $result->num_rows > 0) {
+if ($result && $result->nu...
         $user = $result->fetch_assoc();
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['logged_in'] = true;
