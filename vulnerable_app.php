@@ -115,11 +115,12 @@ function displayUserContent($userInput, $contentType = 'comment') {
     echo "<p>" . $userInput . "</p>";
     echo "</div>";
 
-    global $conn;
-    $storeQuery = "INSERT INTO user_content (content, type) VALUES ('$userInput', '$contentType')";
-    $conn->query($storeQuery);
-}
-
+global $conn;
+$storeQuery = "INSERT INTO user_content (content, type) VALUES (?, ?)";
+$stmt = $conn->prepare($storeQuery);
+$stmt->bind_param("ss", $userInput, $contentType);
+$stmt->execute();
+$stmt->c...
 function readUserFile($filename) {
     $basePath = "user_files/";
     $fullPath = $basePath . $filename;
