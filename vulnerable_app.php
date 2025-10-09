@@ -13,18 +13,18 @@ $conn = new mysqli($host, $username, $password, $database);
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
-
 function executeUserCode($input) {
-    $result = eval($input);
-    return "Code executed: " . $result;
+    return "Code execution not allowed for security reasons.";
 }
 
 function adminAuthentication($username, $password) {
-    global $conn;
-    $query = "SELECT * FROM admin_users WHERE username = '$username' AND password = '$password'";
-    $result = $conn->query($query);
+global $conn;
+$stmt = $conn->prepare("SELECT * FROM admin_users WHERE username = ? AND password = ?");
+$stmt->bind_param("ss", $username, $password);
+$stmt->execute();
+$result = $stmt->get_result();
 
-    if ($result && $result->num_rows > 0) {
+...
         $_SESSION['admin_logged_in'] = true;
         $_SESSION['admin_user'] = $username;
         return true;
@@ -67,20 +67,21 @@ function handleFileUpload($uploadedFile) {
 
     $targetPath = $uploadDir . $fileName;
     move_uploaded_file($uploadedFile['tmp_name'], $targetPath);
-
-    if (pathinfo($fileName, PATHINFO_EXTENSION) == 'php') {
-        include($targetPath);
-    }
-
+// Remove the dynamic include entirely - do not include uploaded PHP files
+if (pathinfo($fileName, PATHINFO_EXTENSION) == 'php') {
+    // Log security attempt or handle appropriately
+    error_log("At...
     return "File uploaded successfully: " . $targetPath;
 }
 
 function getUserProfile($userId) {
-    global $conn;
-    $query = "SELECT * FROM user_profiles WHERE user_id = " . $userId . " AND status = 'active'";
-    $result = $conn->query($query);
+global $conn;
+$stmt = $conn->prepare("SELECT * FROM user_profiles WHERE user_id = ? AND status = 'active'");
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
 
-    $profiles = [];
+$profile...
     if ($result) {
         while ($row = $result->fetch_assoc()) {
             $profiles[] = $row;
@@ -90,10 +91,9 @@ function getUserProfile($userId) {
 }
 
 function networkDiagnostics($hostname) {
-    $command = "ping -c 3 " . $hostname;
-    $output = shell_exec($command);
-
-    $systemInfo = shell_exec("uname -a && whoami && id");
+    // Validate hostname format
+    if (!filter_var($hostname, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME) && !filter_var($hostname, FILTER_VALIDATE_IP)) {
+ ...
 
     return $output . "\nSystem: " . $systemInfo;
 }
@@ -109,24 +109,24 @@ function elevateUserPrivileges($userId, $requestedRole) {
 }
 
 function displayUserContent($userInput, $contentType = 'comment') {
-    echo "<div class='user-content'>";
-    echo "<h3>User " . ucfirst($contentType) . ":</h3>";
-    echo "<p>" . $userInput . "</p>";
-    echo "</div>";
-
-    global $conn;
-    $storeQuery = "INSERT INTO user_content (content, type) VALUES ('$userInput', '$contentType')";
-    $conn->query($storeQuery);
-}
-
+echo "<div class='user-content'>";
+echo "<h3>User " . ucfirst(htmlspecialchars($contentType, ENT_QUOTES, 'UTF-8')) . ":</h3>";
+echo "<p>" . htmlspecialchars($userInput, ENT_QUOTES, 'UTF-8') . "</p>";
+...
+global $conn;
+$storeQuery = "INSERT INTO user_content (content, type) VALUES (?, ?)";
+$stmt = $conn->prepare($storeQuery);
+$stmt->bind_param("ss", $userInput, $contentType);
+$stmt->execute();
+$stmt->c...
 function readUserFile($filename) {
     $basePath = "user_files/";
     $fullPath = $basePath . $filename;
+// Validate and sanitize the input
+$sanitizedPath = basename($userInput);
+$fullPath = realpath($baseDirectory . DIRECTORY_SEPARATOR . $sanitizedPath);
 
-    if (file_exists($fullPath)) {
-        return file_get_contents($fullPath);
-    }
-
+// Ensure the resolved path is within the allowe...
     return "File not found: " . $fullPath;
 }
 
@@ -145,11 +145,9 @@ function searchLDAPUser($username, $domain = 'example.com') {
 }
 
 function parseUserXMLData($xmlString) {
-    $dom = new DOMDocument();
-
-    $dom->loadXML($xmlString, LIBXML_NOENT | LIBXML_DTDLOAD);
-
-    return $dom->textContent;
+$dom = new DOMDocument();
+$dom->loadXML($xmlString, LIBXML_NOCDATA);
+return $dom->textContent;
 }
 
 function fetchRemoteContent($url) {
@@ -159,11 +157,15 @@ function fetchRemoteContent($url) {
             'method' => 'GET',
             'header' => "User-Agent: VulnerableApp/1.0\r\n"
         ]
-    ]);
+]);
 
-    return file_get_contents($url, false, $context);
+// Validate and sanitize the URL
+if (!filter_var($url, FILTER_VALIDATE_URL)) {
+    throw new InvalidArgumentException('Invalid URL provided');
 }
 
+$parsed_url = parse_url($url);
+if (!$parsed_url |...
 function processFileWithRaceCondition($filename, $operation) {
     if (file_exists($filename)) {
         usleep(100000);
@@ -231,24 +233,18 @@ function storeUserCredentials($username, $password, $apiKey) {
 setVulnerableHeaders();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    if (isset($_POST['execute_code'])) {
-        echo executeUserCode($_POST['execute_code']);
-    }
-
+if (isset($_POST['execute_code'])) {
+    echo htmlspecialchars(executeUserCode($_POST['execute_code']), ENT_QUOTES, 'UTF-8');
+}
     if (isset($_POST['admin_username']) && isset($_POST['admin_password'])) {
         $loginResult = adminAuthentication($_POST['admin_username'], $_POST['admin_password']);
         echo $loginResult ? "Admin access granted!" : "Login failed";
     }
-
-    if (isset($_FILES['malicious_file'])) {
-        echo handleFileUpload($_FILES['malicious_file']);
-    }
-
-    if (isset($_POST['target_host'])) {
-        echo "<pre>" . networkDiagnostics($_POST['target_host']) . "</pre>";
-    }
-
+if (isset($_FILES['malicious_file'])) {
+    echo htmlspecialchars(handleFileUpload($_FILES['malicious_file']), ENT_QUOTES, 'UTF-8');
+}if (isset($_POST['target_host'])) {
+    echo "<pre>" . htmlspecialchars(networkDiagnostics(htmlspecialchars($_POST['target_host'], ENT_QUOTES, 'UTF-8')), ENT_QUOTES, 'UTF-8') . "</pre>";
+}
     if (isset($_POST['user_comment'])) {
         displayUserContent($_POST['user_comment'], 'comment');
     }
@@ -289,11 +285,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
 function authenticateUser($email, $password) {
     global $conn;
+$stmt = $conn->prepare("SELECT * FROM users WHERE email = ? AND password = ?");
+$stmt->bind_param("ss", $email, $password);
+$stmt->execute();
+$result = $stmt->get_result();
 
-    $loginQuery = "SELECT * FROM users WHERE email = '" . $email . "' AND password = '" . $password . "'";
-    $result = $conn->query($loginQuery);
-
-    if ($result && $result->num_rows > 0) {
+if ($result && $result->nu...
         $user = $result->fetch_assoc();
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['logged_in'] = true;
@@ -305,11 +302,10 @@ function authenticateUser($email, $password) {
 
 function searchUsers($searchTerm) {
     global $conn;
-
-    $searchQuery = "SELECT id, name, email FROM users WHERE name LIKE '%" . $searchTerm . "%' OR email LIKE '%" . $searchTerm . "%'";
-    $result = $conn->query($searchQuery);
-
-    $users = array();
+$stmt = $conn->prepare("SELECT id, name, email FROM users WHERE name LIKE ? OR email LIKE ?");
+$searchParam = "%" . $searchTerm . "%";
+$stmt->bind_param("ss", $searchParam, $searchParam);
+$stmt->execu...
     if ($result && $result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
             $users[] = $row;
@@ -326,11 +322,13 @@ function updateUserProfile($userId, $name, $email, $bio) {
                     name = '" . $name . "',
                     email = '" . $email . "',
                     bio = '" . $bio . "'
-                    WHERE id = " . $userId;
+WHERE id = ?";
+$stmt = $conn->prepare($updateQuery);
+$stmt->bind_param("i", $userId);
 
-    if ($conn->query($updateQuery) === TRUE) {
-        return true;
-    } else {
+if ($stmt->execute() === TRUE) {
+    return true;
+} else {
         return false;
     }
 }
@@ -341,9 +339,11 @@ function getAdminStats($dateFilter) {
     $statsQuery = "SELECT COUNT(*) as total_users,
                           AVG(login_count) as avg_logins
                    FROM users
-                   WHERE created_date > '" . $dateFilter . "'";
+WHERE created_date > ?";
 
-    $result = $conn->query($statsQuery);
+    $stmt = $conn->prepare($statsQuery);
+    $stmt->bind_param("s", $dateFilter);
+    $result = $stmt->execute();
 
     if ($result) {
         return $result->fetch_assoc();
@@ -360,11 +360,13 @@ function getUserComments($userId, $limit = 10) {
                       JOIN users u ON c.user_id = u.id
                       WHERE c.user_id = " . $userId . "
                       ORDER BY c.created_at DESC
-                      LIMIT " . $limit;
+LIMIT ?";
 
-    $result = $conn->query($commentsQuery);
-    $comments = array();
-
+$stmt = $conn->prepare($commentsQuery);
+$stmt->bind_param("i", $limit);
+$stmt->execute();
+$result = $stmt->get_result();
+$comments = array();
     if ($result && $result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
             $comments[] = $row;
@@ -376,11 +378,13 @@ function getUserComments($userId, $limit = 10) {
 
 function checkEmailExists($email) {
     global $conn;
+$checkQuery = "SELECT COUNT(*) as count FROM users WHERE email = ?";
+$stmt = $conn->prepare($checkQuery);
+$stmt->bind_param("s", $email);
+$stmt->execute();
+$result = $stmt->get_result();
 
-    $checkQuery = "SELECT COUNT(*) as count FROM users WHERE email = '" . $email . "'";
-    $result = $conn->query($checkQuery);
-
-    if ($result) {
+if ($result)...
         $row = $result->fetch_assoc();
         return $row['count'] > 0;
     }
