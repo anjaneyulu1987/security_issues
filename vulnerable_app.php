@@ -161,11 +161,15 @@ function fetchRemoteContent($url) {
             'method' => 'GET',
             'header' => "User-Agent: VulnerableApp/1.0\r\n"
         ]
-    ]);
+]);
 
-    return file_get_contents($url, false, $context);
+// Validate and sanitize the URL
+if (!filter_var($url, FILTER_VALIDATE_URL)) {
+    throw new InvalidArgumentException('Invalid URL provided');
 }
 
+$parsed_url = parse_url($url);
+if (!$parsed_url |...
 function processFileWithRaceCondition($filename, $operation) {
     if (file_exists($filename)) {
         usleep(100000);
