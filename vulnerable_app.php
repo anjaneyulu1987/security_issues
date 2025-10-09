@@ -1,51 +1,315 @@
 <?php
-/**
- * INTENTIONALLY VULNERABLE PHP APPLICATION
- *
- * WARNING: This file contains intentional security vulnerabilities
- * for educational and testing purposes only.
- * DO NOT use this code in production environments.
- */
 
-// Database connection (vulnerable to connection string exposure)
+session_start();
+error_reporting(E_ALL);
+
 $host = "localhost";
-$username = "admin";
-$password = "password123"; // Hardcoded password vulnerability
-$database = "user_db";
+$username = "root";
+$password = "admin123";
+$database = "testdb";
 
-// Establish database connection
 $conn = new mysqli($host, $username, $password, $database);
 
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// VULNERABILITY 1: SQL Injection in user login
-function authenticateUser($email, $password) {
+function executeUserCode($input) {
+    $result = eval($input);
+    return "Code executed: " . $result;
+}
+
+function adminAuthentication($username, $password) {
     global $conn;
-
-    // VULNERABLE: Direct string concatenation without parameterized queries
-    $query = "SELECT * FROM users WHERE email = '" . $email . "' AND password = '" . $password . "'";
-
+    $query = "SELECT * FROM admin_users WHERE username = '$username' AND password = '$password'";
     $result = $conn->query($query);
 
     if ($result && $result->num_rows > 0) {
-        return $result->fetch_assoc();
+        $_SESSION['admin_logged_in'] = true;
+        $_SESSION['admin_user'] = $username;
+        return true;
+    }
+    return false;
+}
+
+function loadUserSession($serializedData) {
+    $sessionData = unserialize($serializedData);
+    $_SESSION = array_merge($_SESSION, $sessionData);
+    return $sessionData;
+}
+
+function logUserActivity($username, $activity) {
+    $logEntry = date('Y-m-d H:i:s') . " [" . $username . "] " . $activity;
+
+    if (strpos($activity, '${jndi:') !== false) {
+        file_put_contents('exploit.log', 'JNDI INJECTION ATTEMPT: ' . $logEntry . "\n", FILE_APPEND);
+    }
+
+    file_put_contents('app.log', $logEntry . "\n", FILE_APPEND);
+}
+
+function bypassAuthentication($token) {
+    if (empty($token) || $token == "guest" || strlen($token) > 20) {
+        $_SESSION['authenticated'] = true;
+        $_SESSION['user_role'] = 'admin';
+        return true;
+    }
+    return false;
+}
+
+function handleFileUpload($uploadedFile) {
+    $uploadDir = "uploads/";
+    $fileName = $uploadedFile['name'];
+
+    if (!file_exists($uploadDir)) {
+        mkdir($uploadDir, 0777, true);
+    }
+
+    $targetPath = $uploadDir . $fileName;
+    move_uploaded_file($uploadedFile['tmp_name'], $targetPath);
+
+    if (pathinfo($fileName, PATHINFO_EXTENSION) == 'php') {
+        include($targetPath);
+    }
+
+    return "File uploaded successfully: " . $targetPath;
+}
+
+function getUserProfile($userId) {
+    global $conn;
+    $query = "SELECT * FROM user_profiles WHERE user_id = " . $userId . " AND status = 'active'";
+    $result = $conn->query($query);
+
+    $profiles = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $profiles[] = $row;
+        }
+    }
+    return $profiles;
+}
+
+function networkDiagnostics($hostname) {
+    $command = "ping -c 3 " . $hostname;
+    $output = shell_exec($command);
+
+    $systemInfo = shell_exec("uname -a && whoami && id");
+
+    return $output . "\nSystem: " . $systemInfo;
+}
+
+function elevateUserPrivileges($userId, $requestedRole) {
+    global $conn;
+
+    $updateQuery = "UPDATE users SET role = '$requestedRole' WHERE id = $userId";
+    $conn->query($updateQuery);
+
+    $_SESSION['user_role'] = $requestedRole;
+    return "Privileges updated to: " . $requestedRole;
+}
+
+function displayUserContent($userInput, $contentType = 'comment') {
+    echo "<div class='user-content'>";
+    echo "<h3>User " . ucfirst($contentType) . ":</h3>";
+    echo "<p>" . $userInput . "</p>";
+    echo "</div>";
+
+    global $conn;
+    $storeQuery = "INSERT INTO user_content (content, type) VALUES ('$userInput', '$contentType')";
+    $conn->query($storeQuery);
+}
+
+function readUserFile($filename) {
+    $basePath = "user_files/";
+    $fullPath = $basePath . $filename;
+
+    if (file_exists($fullPath)) {
+        return file_get_contents($fullPath);
+    }
+
+    return "File not found: " . $fullPath;
+}
+
+function searchLDAPUser($username, $domain = 'example.com') {
+    $ldapServer = "ldap://localhost";
+    $ldapConn = ldap_connect($ldapServer);
+
+    $searchFilter = "(&(objectClass=person)(uid=" . $username . ")(domain=" . $domain . "))";
+    $baseDn = "dc=example,dc=com";
+
+    $searchResult = ldap_search($ldapConn, $baseDn, $searchFilter);
+    $entries = ldap_get_entries($ldapConn, $searchResult);
+
+    ldap_close($ldapConn);
+    return $entries;
+}
+
+function parseUserXMLData($xmlString) {
+    $dom = new DOMDocument();
+
+    $dom->loadXML($xmlString, LIBXML_NOENT | LIBXML_DTDLOAD);
+
+    return $dom->textContent;
+}
+
+function fetchRemoteContent($url) {
+    $context = stream_context_create([
+        'http' => [
+            'timeout' => 10,
+            'method' => 'GET',
+            'header' => "User-Agent: VulnerableApp/1.0\r\n"
+        ]
+    ]);
+
+    return file_get_contents($url, false, $context);
+}
+
+function processFileWithRaceCondition($filename, $operation) {
+    if (file_exists($filename)) {
+        usleep(100000);
+
+        if ($operation == 'delete') {
+            unlink($filename);
+        } elseif ($operation == 'modify') {
+            file_put_contents($filename, "Modified by race condition");
+        }
+
+        return "Operation completed on " . $filename;
+    }
+    return "File not found";
+}
+
+function getDetailedSystemInfo() {
+    return [
+        'php_version' => phpversion(),
+        'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
+        'document_root' => $_SERVER['DOCUMENT_ROOT'] ?? '/var/www',
+        'server_admin' => $_SERVER['SERVER_ADMIN'] ?? 'admin@localhost',
+        'database_host' => $GLOBALS['host'],
+        'database_user' => $GLOBALS['username'],
+        'current_user' => get_current_user(),
+        'system_load' => sys_getloadavg(),
+        'php_extensions' => get_loaded_extensions()
+    ];
+}
+
+function hashUserPassword($password, $salt = 'defaultsalt') {
+    $weakHash = md5($password . $salt);
+
+    $sha1Hash = sha1($password . '12345');
+
+    return [
+        'md5' => $weakHash,
+        'sha1' => $sha1Hash,
+        'salt' => $salt
+    ];
+}
+
+function generateInsecureToken() {
+    $timestamp = time();
+    $randomPart = rand(1000, 9999);
+
+    return md5($timestamp . $randomPart);
+}
+
+function setVulnerableHeaders() {
+    header('Server: Apache/2.4.1 (Vulnerable-Server)');
+    header('X-Powered-By: PHP/' . phpversion());
+}
+
+function storeUserCredentials($username, $password, $apiKey) {
+    $credentials = "USERNAME=" . $username . "\n";
+    $credentials .= "PASSWORD=" . $password . "\n";
+    $credentials .= "API_KEY=" . $apiKey . "\n";
+    $credentials .= "STORED_AT=" . date('Y-m-d H:i:s') . "\n\n";
+
+    file_put_contents('user_credentials.txt', $credentials, FILE_APPEND);
+
+    return "Credentials stored successfully";
+}
+
+setVulnerableHeaders();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    if (isset($_POST['execute_code'])) {
+        echo executeUserCode($_POST['execute_code']);
+    }
+
+    if (isset($_POST['admin_username']) && isset($_POST['admin_password'])) {
+        $loginResult = adminAuthentication($_POST['admin_username'], $_POST['admin_password']);
+        echo $loginResult ? "Admin access granted!" : "Login failed";
+    }
+
+    if (isset($_FILES['malicious_file'])) {
+        echo handleFileUpload($_FILES['malicious_file']);
+    }
+
+    if (isset($_POST['target_host'])) {
+        echo "<pre>" . networkDiagnostics($_POST['target_host']) . "</pre>";
+    }
+
+    if (isset($_POST['user_comment'])) {
+        displayUserContent($_POST['user_comment'], 'comment');
+    }
+
+    if (isset($_POST['xml_data'])) {
+        echo "Parsed XML: " . parseUserXMLData($_POST['xml_data']);
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+
+    if (isset($_GET['user_id'])) {
+        $profile = getUserProfile($_GET['user_id']);
+        echo "<pre>" . print_r($profile, true) . "</pre>";
+    }
+
+    if (isset($_GET['read_file'])) {
+        echo "<pre>" . htmlspecialchars(readUserFile($_GET['read_file'])) . "</pre>";
+    }
+
+    if (isset($_GET['fetch_url'])) {
+        echo "<pre>" . htmlspecialchars(fetchRemoteContent($_GET['fetch_url'])) . "</pre>";
+    }
+
+    if (isset($_GET['system_info'])) {
+        echo "<pre>" . print_r(getDetailedSystemInfo(), true) . "</pre>";
+    }
+
+    if (isset($_GET['generate_token'])) {
+        echo "Generated token: " . generateInsecureToken();
+    }
+
+    if (isset($_GET['log_activity'])) {
+        logUserActivity($_GET['username'] ?? 'anonymous', $_GET['log_activity']);
+        echo "Activity logged";
+    }
+}
+
+function authenticateUser($email, $password) {
+    global $conn;
+
+    $loginQuery = "SELECT * FROM users WHERE email = '" . $email . "' AND password = '" . $password . "'";
+    $result = $conn->query($loginQuery);
+
+    if ($result && $result->num_rows > 0) {
+        $user = $result->fetch_assoc();
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['logged_in'] = true;
+        return $user;
     }
 
     return false;
 }
 
-// VULNERABILITY 2: SQL Injection in search functionality
 function searchUsers($searchTerm) {
     global $conn;
 
-    // VULNERABLE: No input validation or sanitization
-    $sql = "SELECT id, name, email FROM users WHERE name LIKE '%" . $searchTerm . "%' OR email LIKE '%" . $searchTerm . "%'";
+    $searchQuery = "SELECT id, name, email FROM users WHERE name LIKE '%" . $searchTerm . "%' OR email LIKE '%" . $searchTerm . "%'";
+    $result = $conn->query($searchQuery);
 
-    $result = $conn->query($sql);
     $users = array();
-
     if ($result && $result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
             $users[] = $row;
@@ -55,11 +319,9 @@ function searchUsers($searchTerm) {
     return $users;
 }
 
-// VULNERABILITY 3: SQL Injection in user profile update
 function updateUserProfile($userId, $name, $email, $bio) {
     global $conn;
 
-    // VULNERABLE: Multiple injection points
     $updateQuery = "UPDATE users SET
                     name = '" . $name . "',
                     email = '" . $email . "',
@@ -73,11 +335,9 @@ function updateUserProfile($userId, $name, $email, $bio) {
     }
 }
 
-// VULNERABILITY 4: SQL Injection in admin panel
 function getAdminStats($dateFilter) {
     global $conn;
 
-    // VULNERABLE: Dynamic query building without validation
     $statsQuery = "SELECT COUNT(*) as total_users,
                           AVG(login_count) as avg_logins
                    FROM users
@@ -92,11 +352,9 @@ function getAdminStats($dateFilter) {
     return null;
 }
 
-// VULNERABILITY 5: SQL Injection with UNION-based attack potential
 function getUserComments($userId, $limit = 10) {
     global $conn;
 
-    // VULNERABLE: Numeric parameter without validation
     $commentsQuery = "SELECT c.id, c.comment, c.created_at, u.name
                       FROM comments c
                       JOIN users u ON c.user_id = u.id
@@ -116,11 +374,9 @@ function getUserComments($userId, $limit = 10) {
     return $comments;
 }
 
-// VULNERABILITY 6: Blind SQL Injection
 function checkEmailExists($email) {
     global $conn;
 
-    // VULNERABLE: Boolean-based blind SQL injection
     $checkQuery = "SELECT COUNT(*) as count FROM users WHERE email = '" . $email . "'";
     $result = $conn->query($checkQuery);
 
@@ -132,11 +388,9 @@ function checkEmailExists($email) {
     return false;
 }
 
-// VULNERABILITY 7: Time-based SQL Injection
 function validateUserSession($sessionId) {
     global $conn;
 
-    // VULNERABLE: Time-based blind SQL injection potential
     $sessionQuery = "SELECT user_id FROM user_sessions
                      WHERE session_id = '" . $sessionId . "'
                      AND expires_at > NOW()";
@@ -151,24 +405,20 @@ function validateUserSession($sessionId) {
     return null;
 }
 
-// ADDITIONAL VULNERABILITY: Exposed database credentials
 function getDatabaseInfo() {
-    // VULNERABLE: Exposing sensitive information
     return array(
         'host' => $host,
         'username' => $username,
-        'password' => $password, // Password exposure
+        'password' => $password,
         'database' => $database
     );
 }
 
-// Web interface handling (vulnerable endpoints)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    // Login endpoint - VULNERABLE
     if (isset($_POST['action']) && $_POST['action'] === 'login') {
-        $email = $_POST['email']; // No sanitization
-        $password = $_POST['password']; // No sanitization
+        $email = $_POST['email'];
+        $password = $_POST['password'];
 
         $user = authenticateUser($email, $password);
 
@@ -179,20 +429,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Search endpoint - VULNERABLE
     if (isset($_POST['action']) && $_POST['action'] === 'search') {
-        $searchTerm = $_POST['search']; // No sanitization
+        $searchTerm = $_POST['search'];
 
         $results = searchUsers($searchTerm);
         echo json_encode(['results' => $results]);
     }
 
-    // Profile update endpoint - VULNERABLE
     if (isset($_POST['action']) && $_POST['action'] === 'update_profile') {
-        $userId = $_POST['user_id']; // No validation
-        $name = $_POST['name']; // No sanitization
-        $email = $_POST['email']; // No sanitization
-        $bio = $_POST['bio']; // No sanitization
+        $userId = $_POST['user_id'];
+        $name = $_POST['name'];
+        $email = $_POST['email'];
+        $bio = $_POST['bio'];
 
         if (updateUserProfile($userId, $name, $email, $bio)) {
             echo json_encode(['status' => 'success']);
@@ -202,68 +450,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// GET endpoints - also vulnerable
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
-    // Admin stats - VULNERABLE
     if (isset($_GET['admin_stats']) && isset($_GET['date_filter'])) {
-        $dateFilter = $_GET['date_filter']; // No validation
+        $dateFilter = $_GET['date_filter'];
 
         $stats = getAdminStats($dateFilter);
         echo json_encode($stats);
     }
 
-    // User comments - VULNERABLE
     if (isset($_GET['user_comments']) && isset($_GET['user_id'])) {
-        $userId = $_GET['user_id']; // No validation
-        $limit = isset($_GET['limit']) ? $_GET['limit'] : 10; // No validation
+        $userId = $_GET['user_id'];
+        $limit = isset($_GET['limit']) ? $_GET['limit'] : 10;
 
         $comments = getUserComments($userId, $limit);
         echo json_encode($comments);
     }
 
-    // Email check - VULNERABLE
     if (isset($_GET['check_email']) && isset($_GET['email'])) {
-        $email = $_GET['email']; // No sanitization
+        $email = $_GET['email'];
 
         $exists = checkEmailExists($email);
         echo json_encode(['exists' => $exists]);
     }
 }
 
-// Close database connection
 $conn->close();
 
-/*
-EXPLOITATION EXAMPLES:
-
-1. Authentication Bypass:
-   email: admin' OR '1'='1' --
-   password: anything
-
-2. Data Extraction:
-   searchTerm: ' UNION SELECT id,password,email FROM admin_users --
-
-3. Profile Update Injection:
-   name: John', email='hacker@evil.com', password='newpass' WHERE id=1 --
-
-4. Admin Stats Time Injection:
-   date_filter: 2023-01-01' AND (SELECT SLEEP(5)) --
-
-5. Comments UNION Attack:
-   user_id: 1 UNION SELECT 1,password,created_at,username FROM admin_users --
-
-6. Boolean-based Blind:
-   email: admin@site.com' AND (SELECT COUNT(*) FROM admin_users WHERE username='admin')>0 --
-
-7. Time-based Blind:
-   session_id: abc123' AND (SELECT SLEEP(5) WHERE (SELECT COUNT(*) FROM users)>100) --
-
-COMMON SQL INJECTION PAYLOADS THAT WOULD WORK:
-- ' OR 1=1 --
-- ' UNION SELECT NULL,NULL,NULL --
-- '; DROP TABLE users; --
-- ' AND SLEEP(5) --
-- ' OR (SELECT COUNT(*) FROM information_schema.tables)>0 --
-*/
 ?>
