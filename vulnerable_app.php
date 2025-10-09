@@ -328,11 +328,13 @@ function updateUserProfile($userId, $name, $email, $bio) {
                     name = '" . $name . "',
                     email = '" . $email . "',
                     bio = '" . $bio . "'
-                    WHERE id = " . $userId;
+WHERE id = ?";
+$stmt = $conn->prepare($updateQuery);
+$stmt->bind_param("i", $userId);
 
-    if ($conn->query($updateQuery) === TRUE) {
-        return true;
-    } else {
+if ($stmt->execute() === TRUE) {
+    return true;
+} else {
         return false;
     }
 }
