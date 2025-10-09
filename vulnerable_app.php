@@ -18,11 +18,13 @@ function executeUserCode($input) {
 }
 
 function adminAuthentication($username, $password) {
-    global $conn;
-    $query = "SELECT * FROM admin_users WHERE username = '$username' AND password = '$password'";
-    $result = $conn->query($query);
+global $conn;
+$stmt = $conn->prepare("SELECT * FROM admin_users WHERE username = ? AND password = ?");
+$stmt->bind_param("ss", $username, $password);
+$stmt->execute();
+$result = $stmt->get_result();
 
-    if ($result && $result->num_rows > 0) {
+...
         $_SESSION['admin_logged_in'] = true;
         $_SESSION['admin_user'] = $username;
         return true;
