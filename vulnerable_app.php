@@ -110,11 +110,10 @@ function elevateUserPrivileges($userId, $requestedRole) {
 }
 
 function displayUserContent($userInput, $contentType = 'comment') {
-    echo "<div class='user-content'>";
-    echo "<h3>User " . ucfirst($contentType) . ":</h3>";
-    echo "<p>" . $userInput . "</p>";
-    echo "</div>";
-
+echo "<div class='user-content'>";
+echo "<h3>User " . ucfirst(htmlspecialchars($contentType, ENT_QUOTES, 'UTF-8')) . ":</h3>";
+echo "<p>" . htmlspecialchars($userInput, ENT_QUOTES, 'UTF-8') . "</p>";
+...
 global $conn;
 $storeQuery = "INSERT INTO user_content (content, type) VALUES (?, ?)";
 $stmt = $conn->prepare($storeQuery);
