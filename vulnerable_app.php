@@ -209,11 +209,10 @@ function hashUserPassword($password, $salt = null) {
 
 function generateInsecureToken() {
     $timestamp = time();
-    $randomPart = rand(1000, 9999);
+$randomPart = rand(1000, 9999);
 
-    return md5($timestamp . $randomPart);
+    return hash('sha256', $timestamp . $randomPart);
 }
-
 function setVulnerableHeaders() {
     header('Server: Apache/2.4.1 (Vulnerable-Server)');
     header('X-Powered-By: PHP/' . phpversion());
