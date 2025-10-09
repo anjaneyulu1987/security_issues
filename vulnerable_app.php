@@ -384,11 +384,13 @@ $comments = array();
 
 function checkEmailExists($email) {
     global $conn;
+$checkQuery = "SELECT COUNT(*) as count FROM users WHERE email = ?";
+$stmt = $conn->prepare($checkQuery);
+$stmt->bind_param("s", $email);
+$stmt->execute();
+$result = $stmt->get_result();
 
-    $checkQuery = "SELECT COUNT(*) as count FROM users WHERE email = '" . $email . "'";
-    $result = $conn->query($checkQuery);
-
-    if ($result) {
+if ($result)...
         $row = $result->fetch_assoc();
         return $row['count'] > 0;
     }
