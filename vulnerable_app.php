@@ -5,11 +5,14 @@ if (isset($_GET['command'])) {
     // Retrieve user-supplied input directly
     $command = $_GET['command'];
 
-    // Execute the command without any sanitization or validation
-    // This is the source of the critical vulnerability
-    $output = shell_exec($command);
+// Validate and sanitize the command input
+if (!isset($command) || empty($command)) {
+    die('Invalid command');
+}
 
-    // Display the output
+// Define allowed commands (whitelist approach)
+$allowedCommands = [
+    'ls' => 'l...
     echo "<pre>$output</pre>";
 } else {
     // Instruction for a user to trigger the vulnerability
