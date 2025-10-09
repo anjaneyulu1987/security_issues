@@ -13,18 +13,18 @@ $conn = new mysqli($host, $username, $password, $database);
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
-
 function executeUserCode($input) {
-    $result = eval($input);
-    return "Code executed: " . $result;
+    return "Code execution disabled for security reasons";
 }
 
 function adminAuthentication($username, $password) {
-    global $conn;
-    $query = "SELECT * FROM admin_users WHERE username = '$username' AND password = '$password'";
-    $result = $conn->query($query);
+global $conn;
+$stmt = $conn->prepare("SELECT * FROM admin_users WHERE username = ? AND password = ?");
+$stmt->bind_param("ss", $username, $password);
+$stmt->execute();
+$result = $stmt->get_result();
 
-    if ($result && $result->num_rows > 0) {
+...
         $_SESSION['admin_logged_in'] = true;
         $_SESSION['admin_user'] = $username;
         return true;
@@ -76,11 +76,13 @@ function handleFileUpload($uploadedFile) {
 }
 
 function getUserProfile($userId) {
-    global $conn;
-    $query = "SELECT * FROM user_profiles WHERE user_id = " . $userId . " AND status = 'active'";
-    $result = $conn->query($query);
+global $conn;
+$stmt = $conn->prepare("SELECT * FROM user_profiles WHERE user_id = ? AND status = 'active'");
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
 
-    $profiles = [];
+$profile...
     if ($result) {
         while ($row = $result->fetch_assoc()) {
             $profiles[] = $row;
@@ -90,10 +92,9 @@ function getUserProfile($userId) {
 }
 
 function networkDiagnostics($hostname) {
-    $command = "ping -c 3 " . $hostname;
-    $output = shell_exec($command);
-
-    $systemInfo = shell_exec("uname -a && whoami && id");
+    // Validate and sanitize hostname
+    if (!filter_var($hostname, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME) && 
+        !filter_var($hostname, FILTER_VA...
 
     return $output . "\nSystem: " . $systemInfo;
 }
@@ -114,11 +115,12 @@ function displayUserContent($userInput, $contentType = 'comment') {
     echo "<p>" . $userInput . "</p>";
     echo "</div>";
 
-    global $conn;
-    $storeQuery = "INSERT INTO user_content (content, type) VALUES ('$userInput', '$contentType')";
-    $conn->query($storeQuery);
-}
-
+global $conn;
+$storeQuery = "INSERT INTO user_content (content, type) VALUES (?, ?)";
+$stmt = $conn->prepare($storeQuery);
+$stmt->bind_param("ss", $userInput, $contentType);
+$stmt->execute();
+$stmt->c...
 function readUserFile($filename) {
     $basePath = "user_files/";
     $fullPath = $basePath . $filename;
@@ -289,11 +291,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
 function authenticateUser($email, $password) {
     global $conn;
+$stmt = $conn->prepare("SELECT * FROM users WHERE email = ? AND password = ?");
+$stmt->bind_param("ss", $email, $password);
+$stmt->execute();
+$result = $stmt->get_result();
 
-    $loginQuery = "SELECT * FROM users WHERE email = '" . $email . "' AND password = '" . $password . "'";
-    $result = $conn->query($loginQuery);
-
-    if ($result && $result->num_rows > 0) {
+if ($result && $result->nu...
         $user = $result->fetch_assoc();
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['logged_in'] = true;
