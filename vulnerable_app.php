@@ -25,11 +25,12 @@ function authenticateUser($email, $password) {
     global $conn;
 
     // VULNERABLE: Direct string concatenation without parameterized queries
-    $query = "SELECT * FROM users WHERE email = '" . $email . "' AND password = '" . $password . "'";
+$stmt = $conn->prepare("SELECT * FROM users WHERE email = ? AND password = ?");
+$stmt->bind_param("ss", $email, $password);
+$stmt->execute();
+$result = $stmt->get_result();
 
-    $result = $conn->query($query);
-
-    if ($result && $result->num_rows > 0) {
+if ($result && $result->nu...
         return $result->fetch_assoc();
     }
 
@@ -41,11 +42,10 @@ function searchUsers($searchTerm) {
     global $conn;
 
     // VULNERABLE: No input validation or sanitization
-    $sql = "SELECT id, name, email FROM users WHERE name LIKE '%" . $searchTerm . "%' OR email LIKE '%" . $searchTerm . "%'";
-
-    $result = $conn->query($sql);
-    $users = array();
-
+$stmt = $conn->prepare("SELECT id, name, email FROM users WHERE name LIKE ? OR email LIKE ?");
+$searchParam = "%" . $searchTerm . "%";
+$stmt->bind_param("ss", $searchParam, $searchParam);
+$stmt->execu...
     if ($result && $result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
             $users[] = $row;
@@ -64,9 +64,12 @@ function updateUserProfile($userId, $name, $email, $bio) {
                     name = '" . $name . "',
                     email = '" . $email . "',
                     bio = '" . $bio . "'
-                    WHERE id = " . $userId;
-
-    if ($conn->query($updateQuery) === TRUE) {
+WHERE id = ?";
+    
+    $stmt = $conn->prepare($updateQuery);
+    $stmt->bind_param("i", $userId);
+    
+    if ($stmt->execute()) {
         return true;
     } else {
         return false;
@@ -81,9 +84,11 @@ function getAdminStats($dateFilter) {
     $statsQuery = "SELECT COUNT(*) as total_users,
                           AVG(login_count) as avg_logins
                    FROM users
-                   WHERE created_date > '" . $dateFilter . "'";
+WHERE created_date > ?";
 
-    $result = $conn->query($statsQuery);
+    $stmt = $conn->prepare($statsQuery);
+    $stmt->bind_param("s", $dateFilter);
+    $result = $stmt->execute();
 
     if ($result) {
         return $result->fetch_assoc();
@@ -102,11 +107,13 @@ function getUserComments($userId, $limit = 10) {
                       JOIN users u ON c.user_id = u.id
                       WHERE c.user_id = " . $userId . "
                       ORDER BY c.created_at DESC
-                      LIMIT " . $limit;
+LIMIT ?";
 
-    $result = $conn->query($commentsQuery);
-    $comments = array();
-
+$stmt = $conn->prepare($commentsQuery);
+$stmt->bind_param("i", $limit);
+$stmt->execute();
+$result = $stmt->get_result();
+$comments = array();
     if ($result && $result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
             $comments[] = $row;
