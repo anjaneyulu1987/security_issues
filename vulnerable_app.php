@@ -308,11 +308,10 @@ if ($result && $result->nu...
 
 function searchUsers($searchTerm) {
     global $conn;
-
-    $searchQuery = "SELECT id, name, email FROM users WHERE name LIKE '%" . $searchTerm . "%' OR email LIKE '%" . $searchTerm . "%'";
-    $result = $conn->query($searchQuery);
-
-    $users = array();
+$stmt = $conn->prepare("SELECT id, name, email FROM users WHERE name LIKE ? OR email LIKE ?");
+$searchParam = "%" . $searchTerm . "%";
+$stmt->bind_param("ss", $searchParam, $searchParam);
+$stmt->execu...
     if ($result && $result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
             $users[] = $row;
