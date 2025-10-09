@@ -67,11 +67,10 @@ function handleFileUpload($uploadedFile) {
 
     $targetPath = $uploadDir . $fileName;
     move_uploaded_file($uploadedFile['tmp_name'], $targetPath);
-
-    if (pathinfo($fileName, PATHINFO_EXTENSION) == 'php') {
-        include($targetPath);
-    }
-
+// Remove the dynamic include entirely - do not include uploaded PHP files
+if (pathinfo($fileName, PATHINFO_EXTENSION) == 'php') {
+    // Log security attempt or handle appropriately
+    error_log("At...
     return "File uploaded successfully: " . $targetPath;
 }
 
