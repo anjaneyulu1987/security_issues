@@ -13,10 +13,8 @@ $conn = new mysqli($host, $username, $password, $database);
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
-
 function executeUserCode($input) {
-    $result = eval($input);
-    return "Code executed: " . $result;
+    return "Code execution disabled for security reasons";
 }
 
 function adminAuthentication($username, $password) {
