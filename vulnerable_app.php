@@ -192,11 +192,13 @@ function getDetailedSystemInfo() {
         'php_extensions' => get_loaded_extensions()
     ];
 }
-
-function hashUserPassword($password, $salt = 'defaultsalt') {
-    $weakHash = md5($password . $salt);
-
-    $sha1Hash = sha1($password . '12345');
+function hashUserPassword($password, $salt = null) {
+    if ($salt === null) {
+        $salt = bin2hex(random_bytes(16));
+    }
+    
+    $secureHash = password_hash($password, PASSWORD_ARGON2ID);
+    ...
 
     return [
         'md5' => $weakHash,
@@ -207,11 +209,10 @@ function hashUserPassword($password, $salt = 'defaultsalt') {
 
 function generateInsecureToken() {
     $timestamp = time();
-    $randomPart = rand(1000, 9999);
+$randomPart = rand(1000, 9999);
 
-    return md5($timestamp . $randomPart);
+    return hash('sha256', $timestamp . $randomPart);
 }
-
 function setVulnerableHeaders() {
     header('Server: Apache/2.4.1 (Vulnerable-Server)');
     header('X-Powered-By: PHP/' . phpversion());
