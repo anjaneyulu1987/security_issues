@@ -146,11 +146,9 @@ function searchLDAPUser($username, $domain = 'example.com') {
 }
 
 function parseUserXMLData($xmlString) {
-    $dom = new DOMDocument();
-
-    $dom->loadXML($xmlString, LIBXML_NOENT | LIBXML_DTDLOAD);
-
-    return $dom->textContent;
+$dom = new DOMDocument();
+$dom->loadXML($xmlString, LIBXML_NOCDATA);
+return $dom->textContent;
 }
 
 function fetchRemoteContent($url) {
