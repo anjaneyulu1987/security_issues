@@ -243,11 +243,9 @@ if (isset($_POST['execute_code'])) {
         $loginResult = adminAuthentication($_POST['admin_username'], $_POST['admin_password']);
         echo $loginResult ? "Admin access granted!" : "Login failed";
     }
-
-    if (isset($_FILES['malicious_file'])) {
-        echo handleFileUpload($_FILES['malicious_file']);
-    }
-if (isset($_POST['target_host'])) {
+if (isset($_FILES['malicious_file'])) {
+    echo htmlspecialchars(handleFileUpload($_FILES['malicious_file']), ENT_QUOTES, 'UTF-8');
+}if (isset($_POST['target_host'])) {
     echo "<pre>" . htmlspecialchars(networkDiagnostics(htmlspecialchars($_POST['target_host'], ENT_QUOTES, 'UTF-8')), ENT_QUOTES, 'UTF-8') . "</pre>";
 }
     if (isset($_POST['user_comment'])) {
